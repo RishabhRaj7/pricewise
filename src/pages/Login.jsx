@@ -27,7 +27,7 @@ export default function Login() {
         <div className="text-center mt-20">
           <div className="z-0 w-full flex justify-center">
             <img
-              src="/groceries.png"
+              src={`${import.meta.env.BASE_URL}groceries.png`}
               alt="Groceries"
               className="scale-150"
             />

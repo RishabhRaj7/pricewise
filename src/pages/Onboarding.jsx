@@ -8,7 +8,7 @@ export default function Onboarding() {
     <MinimalLayout>
     <div className="h-screen flex flex-col justify-between p-4">
       <div className="text-center mt-10">
-        <img src="/onboard1.png" alt="Slide" className="mx-auto" />
+        <img src={`${import.meta.env.BASE_URL}onboard1.png`} alt="Slide" className="mx-auto" />
         <div className="bg-white p-4 rounded-xl shadow mt-6">
           <h2 className="font-bold text-lg">Never miss a better deal again</h2>
           <p className="text-sm text-gray-600">Track price history, and buy when it’s cheapest.</p>

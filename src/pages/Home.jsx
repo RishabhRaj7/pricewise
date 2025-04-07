@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useCart } from "../context/CartContext";
 
 const brandIcons = {
-  blinkit: "/logos/blinkit.png",
-  zepto: "/logos/zepto.png",
-  instamart: "/logos/instamart.png",
+  blinkit: `${import.meta.env.BASE_URL}logos/blinkit.png`,
+  zepto: `${import.meta.env.BASE_URL}logos/zepto.png`,
+  instamart: `${import.meta.env.BASE_URL}logos/instamart.png`,
   jio: null,
 };
 
