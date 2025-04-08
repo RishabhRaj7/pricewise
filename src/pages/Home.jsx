@@ -143,10 +143,16 @@ export default function Home() {
     <div className="bg-[#fbfbfb] min-h-screen flex flex-col relative">
       <div className="p-4 pb-28">
         <div className="text-sm text-gray-600 text-center mb-4">
-          <div className="text-lg font-semibold flex justify-center items-center gap-1">
-            <span>📍</span>
-            <span className="truncate max-w-[250px]">{location}</span>
-          </div>
+        <div
+  className="text-lg font-semibold flex justify-center items-center gap-1 cursor-pointer"
+  onClick={() => navigate("/location")}
+>
+  <span>📍</span>
+  <span className="truncate max-w-[250px] underline underline-offset-4">
+    {location}
+  </span>
+</div>
+
         </div>
 
         <div className="bg-gray-100 rounded-full px-4 py-2 mb-4 flex items-center">
