@@ -1,15 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useCart } from "../context/CartContext";
-import { supabase } from "../supabase";
+import { supabase } from "../supabase.js";
+import { fetchGroupedProductsFromBackend } from "../utils/productService";
+import { useNavigate } from "react-router-dom";
 
 const brandIcons = {
   blinkit: `${import.meta.env.BASE_URL}logos/blinkit.png`,
   zepto: `${import.meta.env.BASE_URL}logos/zepto.png`,
   instamart: `${import.meta.env.BASE_URL}logos/instamart.png`,
-  jio: null,
+  swiggyinstamart: `${import.meta.env.BASE_URL}logos/instamart.png`,
+  jiomart: `${import.meta.env.BASE_URL}logos/jiomart.png`,
+  bigbasket: `${import.meta.env.BASE_URL}logos/bigbasket.png`,
 };
-
-import { useNavigate } from 'react-router-dom';
 
 export default function Home() {
   const [location, setLocation] = useState("");
@@ -17,6 +19,7 @@ export default function Home() {
   const [showAllPurchase, setShowAllPurchase] = useState(false);
   const [showAllGroceries, setShowAllGroceries] = useState(false);
   const [allProducts, setAllProducts] = useState([]);
+  const [selectedPlatforms, setSelectedPlatforms] = useState([]);
   const { addToCart, cartItems, updateQuantity } = useCart();
   const navigate = useNavigate();
 
@@ -28,52 +31,83 @@ export default function Home() {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const { data: productData, error: productError } = await supabase.from("product").select("*");
+        const stored = localStorage.getItem("allProducts");
+        if (stored) {
+          setAllProducts(JSON.parse(stored));
+          return;
+        }
+
+        const { data: rawProducts, error: productError } = await supabase.rpc("get_products_with_prices");
         if (productError) throw productError;
 
-        const { data: priceData, error: priceError } = await supabase.from("price").select("*");
-        if (priceError) throw priceError;
+        const { data: platforms, error: platformError } = await supabase.from("platform").select("*");
+        if (platformError) throw platformError;
 
-        const mapped = productData.map((product) => {
-          const productPrices = priceData
-            .filter(p => p.productid === product.productid && p.isavailable)
-            .map(p => ({
-              brand: "blinkit", // replace with platform name if available
-              price: p.discountedprice,
-              oldPrice: p.baseprice,
-              time: "⏱ 12 Mins" // could be dynamic if needed
-            }));
-
-          return {
-            name: product.name,
-            quantityText: "1 unit",
-            image: `https://placehold.co/100x100?text=${encodeURIComponent(product.name)}`,
-            prices: productPrices
-          };
+        const platformMap = {};
+        platforms.forEach((p) => {
+          platformMap[p.platformid] = p.name;
         });
 
+        const mapped = rawProducts
+          .map((row) => {
+            const product = row.product;
+            const validPrices = (product.prices || []).filter((p) => p.platformid !== null);
+            if (validPrices.length === 0) return null;
+
+            return {
+              name: product.name,
+              category: product.category,
+              quantityText: "1 unit",
+              image: `https://placehold.co/100x100?text=${encodeURIComponent(product.name)}`,
+              prices: validPrices.map((p) => ({
+                platform: platformMap[p.platformid] || `Platform ${p.platformid}`,
+                price: p.discountedprice,
+                oldPrice: p.baseprice,
+                time: `⏱ ${Math.floor(Math.random() * 11) + 10} Mins`,
+              })),
+            };
+          })
+          .filter(Boolean);
+
         setAllProducts(mapped);
+        localStorage.setItem("allProducts", JSON.stringify(mapped));
       } catch (error) {
-        console.error("Error loading products and prices:", error);
+        console.error("Error loading products and platforms:", error);
       }
     }
 
     fetchProducts();
   }, []);
 
-  const commonItems = allProducts.slice(0, 2);
-  const purchaseSpecific = allProducts.slice(2, 8);
-  const grocerySpecific = allProducts.slice(8, 14);
+  const commonItems = allProducts.slice(0, 10);
+  const commonCategories = new Set(commonItems.map((p) => p.category));
+  const grocerySpecific = allProducts.filter(
+    (p) => p.category?.trim().toLowerCase() === "gourmet & world food"
+  );
+
+  const commonItemNames = new Set(commonItems.map((p) => p.name));
+  const groceryNames = new Set(grocerySpecific.map((p) => p.name));
+
+  const purchaseSpecific = allProducts.filter(
+    (p) =>
+      !commonItemNames.has(p.name) &&
+      !groceryNames.has(p.name) &&
+      commonCategories.has(p.category)
+  );
 
   const purchaseAgainAll = [...commonItems, ...purchaseSpecific];
-  const groceryAll = [...commonItems, ...grocerySpecific];
+  const groceryAll = [...grocerySpecific];
 
   const filteredPurchase = purchaseAgainAll.filter((product) =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase())
+    product.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+    (selectedPlatforms.length === 0 ||
+      product.prices.some((p) => selectedPlatforms.includes(p.platform.toLowerCase().replace(/\s+/g, ""))))
   );
 
   const filteredGrocery = groceryAll.filter((product) =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase())
+    product.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+    (selectedPlatforms.length === 0 ||
+      product.prices.some((p) => selectedPlatforms.includes(p.platform.toLowerCase().replace(/\s+/g, ""))))
   );
 
   const purchaseAgainProducts = filteredPurchase.slice(0, showAllPurchase ? filteredPurchase.length : 2);
@@ -97,7 +131,7 @@ export default function Home() {
             prices: product.prices,
           })
         }
-        className="bg-green-500 text-white rounded-full w-8 h-8 mt-2 ml-auto block"
+        className="bg-green-500/80 hover:bg-green-500 text-white rounded-full w-8 h-8 mt-2 ml-auto block transition"
       >
         +
       </button>
@@ -106,34 +140,58 @@ export default function Home() {
 
   const renderPriceGrid = (product) => (
     <div className="mt-4 space-y-1 text-xs">
-      {product.prices.map((p, i) => (
-        <div key={i} className="flex items-center justify-between">
-          <div className="capitalize font-medium">
-            {brandIcons[p.brand] ? (
-              <img src={brandIcons[p.brand]} alt={p.brand} className="w-[90px] object-contain" />
-            ) : (
-              p.brand
-            )}
+      {product.prices.map((p, i) => {
+        const key = p.platform.toLowerCase().replace(/\s+/g, "");
+        const logo = brandIcons[key];
+
+        return (
+          <div key={i} className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {logo ? (
+                <img
+                  src={logo}
+                  alt={p.platform}
+                  title={`Show only ${p.platform}`}
+                  className="w-[4rem] h-[4rem] object-contain cursor-pointer hover:scale-105 transition"
+                  onClick={() => {
+                    setSelectedPlatforms((prev) =>
+                      prev.includes(key) ? prev.filter((p) => p !== key) : [...prev, key]
+                    );
+                  }}
+                />
+              ) : (
+                <span className="text-xs text-gray-700">{p.platform}</span>
+              )}
+            </div>
+            <div className="text-right">
+              <div className="text-gray-400 line-through text-[11px]">₹{p.oldPrice}</div>
+              <div className="font-semibold">₹{p.price}</div>
+              <div className="text-[10px] text-gray-500">{p.time}</div>
+            </div>
           </div>
-          <div className="text-right">
-            <div className="text-gray-400 line-through text-[11px]">₹{p.oldPrice}</div>
-            <div className="font-semibold">₹{p.price}</div>
-            <div className="text-[10px] text-gray-500">{p.time}</div>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 
   const renderCard = (product, index) => (
-    <div key={index} className="bg-white rounded-xl p-3 shadow-sm relative cursor-pointer" >
-      <img src={product.image} alt={product.name} className="h-20 w-20 object-contain mx-auto mb-2 rounded cursor-pointer" onClick={() => navigate(`/product/${product.name}`)} />
+    <div key={index} className="bg-white rounded-xl p-3 shadow-sm relative cursor-pointer">
+      <img
+        src={product.image}
+        alt={product.name}
+        className="h-20 w-20 object-contain mx-auto mb-2 rounded cursor-pointer"
+        onClick={() => navigate(`/product/${product.name}`)}
+      />
       <div className="flex items-start justify-between relative">
         <div>
-          <h4 className="text-sm font-semibold">{product.name}</h4>
+          <h4 className="text-sm font-semibold">
+            {product.brand ? `${product.brand} ${product.name}` : product.name}
+          </h4>
           <p className="text-xs text-gray-500">{product.quantityText}</p>
         </div>
-        <div className="absolute right-3 top-0">{renderCartControls(product)}</div>
+        <div className="absolute right-[0.05rem] top-[26px]">
+          {renderCartControls(product)}
+        </div>
       </div>
       {renderPriceGrid(product)}
     </div>
@@ -143,16 +201,15 @@ export default function Home() {
     <div className="bg-[#fbfbfb] min-h-screen flex flex-col relative">
       <div className="p-4 pb-28">
         <div className="text-sm text-gray-600 text-center mb-4">
-        <div
-  className="text-lg font-semibold flex justify-center items-center gap-1 cursor-pointer"
-  onClick={() => navigate("/location")}
->
-  <span>📍</span>
-  <span className="truncate max-w-[250px] underline underline-offset-4">
-    {location}
-  </span>
-</div>
-
+          <div
+            className="text-lg font-semibold flex justify-center items-center gap-1 cursor-pointer"
+            onClick={() => navigate("/location")}
+          >
+            <span>📍</span>
+            <span className="truncate max-w-[250px] underline underline-offset-4">
+              {location}
+            </span>
+          </div>
         </div>
 
         <div className="bg-gray-100 rounded-full px-4 py-2 mb-4 flex items-center">
@@ -165,6 +222,37 @@ export default function Home() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
+
+        {selectedPlatforms.length > 0 && (
+          <div className="mb-4 text-center">
+            <p className="text-sm mb-2 text-gray-700 font-medium">Filtering by:</p>
+            <div className="flex justify-center flex-wrap gap-2">
+              {selectedPlatforms.map((platform) => (
+                <div
+                  key={platform}
+                  className="flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-full shadow-sm"
+                >
+                  <img src={brandIcons[platform]} alt={platform} className="w-5 h-5 object-contain" />
+                  <span className="text-xs capitalize">{platform}</span>
+                  <button
+                    onClick={() =>
+                      setSelectedPlatforms((prev) => prev.filter((p) => p !== platform))
+                    }
+                    className="text-gray-400 text-sm hover:text-red-500"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => setSelectedPlatforms([])}
+              className="text-xs text-blue-600 underline mt-2"
+            >
+              Clear All Filters
+            </button>
+          </div>
+        )}
 
         <div className="flex justify-between items-center mb-2">
           <h3 className="text-md font-semibold">Purchase Again</h3>
@@ -180,7 +268,7 @@ export default function Home() {
         </div>
 
         <div className="flex justify-between items-center mb-2">
-          <h3 className="text-md font-semibold">Groceries</h3>
+          <h3 className="text-md font-semibold">Gourmet & World Food</h3>
           <button
             onClick={() => setShowAllGroceries(!showAllGroceries)}
             className="text-green-600 text-sm"
@@ -195,4 +283,3 @@ export default function Home() {
     </div>
   );
 }
-

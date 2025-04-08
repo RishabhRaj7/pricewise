@@ -10,9 +10,10 @@ import Location from "./pages/Location";
 import Onboarding from "./pages/Onboarding";
 import { CartProvider, useCart } from "./context/CartContext";
 import Account from './pages/Account';
+import Explore from "./pages/Explore";
+import OptimizedCart from "./pages/OptimizedCart";
 
 // Placeholder routes
-const Explore = () => <div className='p-6'>Explore Page</div>;
 const Favourites = () => <div className='p-6'>Favourites Page</div>;
 
 function DebugCart() {
@@ -37,6 +38,7 @@ export default function App() {
             <Route path="/home" element={<Home />} />
             <Route path="/explore" element={<Explore />} />
             <Route path="/cart" element={<Cart />} />
+            <Route path="/optimized-cart" element={<OptimizedCart />} />
             <Route path="/favourites" element={<Favourites />} />
             <Route path="/account" element={<Account />} />
             <Route path="/product/:id" element={<ProductDetail />} />
