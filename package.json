@@ -10,6 +10,7 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
     "axios": "^1.8.4",
     "leaflet": "^1.9.4",
     "react": "^18.2.0",
@@ -17,7 +18,8 @@
     "react-leaflet": "^4.2.1",
     "react-router-dom": "^6.22.0",
     "react-toastify": "^9.1.3",
-    "recharts": "^2.15.2"
+    "recharts": "^2.15.2",
+    "supabase": "^2.20.12"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.4",

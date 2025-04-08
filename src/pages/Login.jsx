@@ -1,37 +1,35 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import MinimalLayout from "../layouts/MinimalLayout";
 
 export default function Login() {
-  const [number, setNumber] = useState("");
+  const location = useLocation();
+  const [number, setNumber] = useState(location.state?.phoneNumber || "");
   const navigate = useNavigate();
 
   const handleNext = () => {
-    if (!number || !/^[6-9]\d{9}$/.test(number)) {
-      toast.error("Please enter a valid 10-digit mobile number.");
+    if (!number || number.length !== 10 || isNaN(number)) {
+      toast.error("Please enter a valid 10-digit mobile number");
       return;
     }
 
-    const generatedOTP = Math.floor(1000 + Math.random() * 9000);
-    localStorage.setItem("otp", generatedOTP);
-    toast.success(`Your OTP is ${generatedOTP}`);
-
+    const otp = Math.floor(1000 + Math.random() * 9000);
+    localStorage.setItem("otp", otp);
+    localStorage.setItem("phoneNumber", number);
+    toast.success(`OTP: ${otp}`);
     navigate("/otp");
   };
 
   return (
     <MinimalLayout>
-    <div className="relative min-h-screen bg-[#fbfbfb] overflow-hidden">
-      <div className="relative z-10 p-6 flex flex-col justify-between h-full">
-        <div className="text-center mt-20">
-          <div className="z-0 w-full flex justify-center">
-            <img
-              src={`${import.meta.env.BASE_URL}groceries.png`}
-              alt="Groceries"
-              className="scale-150"
-            />
-          </div>
+      <div className="p-6 h-screen flex flex-col justify-between">
+        <div className="text-center">
+          <img
+            src={`${import.meta.env.BASE_URL}groceries.png`}
+            alt="Groceries"
+            className="scale-150 mx-auto mb-4"
+          />
           <div className="relative z-10">
             <p className="text-lg font-semibold">Login</p>
             <div className="mt-4">
@@ -39,11 +37,11 @@ export default function Login() {
               <div className="flex items-center border rounded p-2">
                 <span>🇮🇳 +91</span>
                 <input
-                  type="tel"
-                  value={number}
-                  onChange={(e) => setNumber(e.target.value)}
+                  type="text"
                   className="ml-2 outline-none w-full"
                   placeholder="Enter number"
+                  value={number}
+                  onChange={(e) => setNumber(e.target.value)}
                 />
               </div>
             </div>
@@ -51,12 +49,11 @@ export default function Login() {
         </div>
         <button
           onClick={handleNext}
-          className="bg-green-500 text-white w-14 h-14 mx-auto rounded-full mt-10"
+          className="bg-green-500 text-white w-14 h-14 mx-auto rounded-full"
         >
           ➜
         </button>
       </div>
-    </div>
     </MinimalLayout>
   );
 }

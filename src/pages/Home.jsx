@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useCart } from "../context/CartContext";
+import { supabase } from "../supabase";
 
 const brandIcons = {
   blinkit: `${import.meta.env.BASE_URL}logos/blinkit.png`,
@@ -15,6 +16,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showAllPurchase, setShowAllPurchase] = useState(false);
   const [showAllGroceries, setShowAllGroceries] = useState(false);
+  const [allProducts, setAllProducts] = useState([]);
   const { addToCart, cartItems, updateQuantity } = useCart();
   const navigate = useNavigate();
 
@@ -23,27 +25,43 @@ export default function Home() {
     setLocation(savedAddress || "Unknown Location");
   }, []);
 
-  const allProducts = useMemo(() => {
-    return [
-      "Bananas", "Maggi", "Apples", "Bread", "Eggs", "Milk",
-      "Rice", "Tomatoes", "Onions", "Juice", "Soap", "Shampoo", "Butter", "Paneer", "Cheese"
-    ].map((name, index) => {
-      const prices = [
-        { brand: "blinkit", price: Math.floor(Math.random() * 50 + 20), oldPrice: Math.floor(Math.random() * 50 + 70), time: "⏱ 12 Mins" },
-        { brand: "zepto", price: Math.floor(Math.random() * 50 + 20), oldPrice: Math.floor(Math.random() * 50 + 70), time: "⏱ 15 Mins" },
-        { brand: "instamart", price: Math.floor(Math.random() * 50 + 20), oldPrice: Math.floor(Math.random() * 50 + 70), time: "⏱ 18 Mins" },
-        { brand: "jio", price: Math.floor(Math.random() * 50 + 20), oldPrice: Math.floor(Math.random() * 50 + 70), time: "⏱ 35 Mins" },
-      ];
-      return {
-        name,
-        quantityText: "1 unit",
-        image: `https://placehold.co/100x100?text=${encodeURIComponent(name)}`,
-        prices
-      };
-    });
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        const { data: productData, error: productError } = await supabase.from("product").select("*");
+        if (productError) throw productError;
+
+        const { data: priceData, error: priceError } = await supabase.from("price").select("*");
+        if (priceError) throw priceError;
+
+        const mapped = productData.map((product) => {
+          const productPrices = priceData
+            .filter(p => p.productid === product.productid && p.isavailable)
+            .map(p => ({
+              brand: "blinkit", // replace with platform name if available
+              price: p.discountedprice,
+              oldPrice: p.baseprice,
+              time: "⏱ 12 Mins" // could be dynamic if needed
+            }));
+
+          return {
+            name: product.name,
+            quantityText: "1 unit",
+            image: `https://placehold.co/100x100?text=${encodeURIComponent(product.name)}`,
+            prices: productPrices
+          };
+        });
+
+        setAllProducts(mapped);
+      } catch (error) {
+        console.error("Error loading products and prices:", error);
+      }
+    }
+
+    fetchProducts();
   }, []);
 
-  const commonItems = allProducts.slice(0, 2); // Common items shared in both sections
+  const commonItems = allProducts.slice(0, 2);
   const purchaseSpecific = allProducts.slice(2, 8);
   const grocerySpecific = allProducts.slice(8, 14);
 
@@ -171,3 +189,4 @@ export default function Home() {
     </div>
   );
 }
+

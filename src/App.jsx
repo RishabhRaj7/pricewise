@@ -9,11 +9,11 @@ import OTP from "./pages/OTP";
 import Location from "./pages/Location";
 import Onboarding from "./pages/Onboarding";
 import { CartProvider, useCart } from "./context/CartContext";
+import Account from './pages/Account';
 
 // Placeholder routes
 const Explore = () => <div className='p-6'>Explore Page</div>;
 const Favourites = () => <div className='p-6'>Favourites Page</div>;
-const Account = () => <div className='p-6'>Account Page</div>;
 
 function DebugCart() {
   const { cartItems } = useCart();
