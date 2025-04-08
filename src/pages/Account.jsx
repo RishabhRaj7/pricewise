@@ -1,21 +1,42 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { updateUser } from "../utils/userService";
 
 export default function Account() {
-  const [user, setUser] = useState({
-    name: "Rishabh Raj",
-    phone: "+91 9876543210",
-    email: "",
-    avatar: `${import.meta.env.BASE_URL}logos/blinkit.png`,
-  });
+    const [user, setUser] = useState(() => {
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          const parsed = JSON.parse(storedUser);
+          return {
+            name: parsed.name || "",
+            phone: parsed.phonenumber ? `+91 ${parsed.phonenumber}` : "",
+            email: parsed.email || "",
+            avatar: `${import.meta.env.BASE_URL}logos/blinkit.png`,
+          };
+        }
+        return {
+          name: "",
+          phone: "",
+          email: "",
+          avatar: `${import.meta.env.BASE_URL}logos/blinkit.png`,
+        };
+      });
+      
 
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editedName, setEditedName] = useState(user.name);
-  const [editedEmail, setEditedEmail] = useState(user.email);
-  const [editedPhone, setEditedPhone] = useState(user.phone);
+  const [editedName, setEditedName] = useState("");
+  const [editedEmail, setEditedEmail] = useState("");
+  const [editedPhone, setEditedPhone] = useState("");
+  
+  useEffect(() => {
+    setEditedName(user.name);
+    setEditedEmail(user.email);
+    setEditedPhone(user.phone);
+  }, [user]);
+  
   const [showOtpPrompt, setShowOtpPrompt] = useState(false);
   const [enteredOtp, setEnteredOtp] = useState("");
   const [generatedOtp, setGeneratedOtp] = useState(null);
@@ -34,17 +55,67 @@ export default function Account() {
     setShowOtpPrompt(true);
   };
 
-  const verifyOtp = () => {
+//   const verifyOtp = () => {
+//     if (enteredOtp === generatedOtp) {
+//       setUser({ name: editedName, email: editedEmail, phone: editedPhone, avatar: user.avatar });
+//       localStorage.setItem("user", JSON.stringify({
+//         ...JSON.parse(localStorage.getItem("user")),
+//         name: editedName,
+//         email: editedEmail,
+//         phonenumber: editedPhone.replace("+91 ", "")
+//       }));
+      
+//       setIsEditing(false);
+//       setShowOtpPrompt(false);
+//       setEnteredOtp("");
+//       toast.success("OTP verified and details updated!");
+//     } else {
+//       toast.error("Invalid OTP");
+//     }
+//   };
+
+const verifyOtp = async () => {
     if (enteredOtp === generatedOtp) {
-      setUser({ name: editedName, email: editedEmail, phone: editedPhone, avatar: user.avatar });
-      setIsEditing(false);
-      setShowOtpPrompt(false);
-      setEnteredOtp("");
-      toast.success("OTP verified and details updated!");
+      const stored = localStorage.getItem("user");
+      const storedUser = stored ? JSON.parse(stored) : null;
+  
+      if (!storedUser || !storedUser.userid) {
+        toast.error("User ID missing.");
+        return;
+      }
+  
+      const updates = {
+        name: editedName,
+        email: editedEmail,
+        phonenumber: editedPhone.replace("+91 ", ""),
+      };
+  
+      const updatedUser = await updateUser(storedUser.userid, updates);
+  
+      if (updatedUser) {
+        const updatedData = {
+          ...storedUser,
+          ...updates,
+        };
+        setUser({
+          name: updatedUser.name,
+          email: updatedUser.email,
+          phone: `+91 ${updatedUser.phonenumber}`,
+          avatar: user.avatar,
+        });
+        localStorage.setItem("user", JSON.stringify(updatedData));
+        toast.success("Profile updated successfully!");
+        setIsEditing(false);
+        setShowOtpPrompt(false);
+        setEnteredOtp("");
+      } else {
+        toast.error("Failed to update user.");
+      }
     } else {
       toast.error("Invalid OTP");
     }
   };
+  
 
   const handleWIP = (label) => toast.info(`${label} is still in the oven 🍕 Coming soon!`);
 

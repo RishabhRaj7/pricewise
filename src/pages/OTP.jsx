@@ -2,20 +2,38 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import MinimalLayout from "../layouts/MinimalLayout";
+import { getUserByPhoneNumber, createUserWithPhone } from "../utils/userService";
 
 export default function OTP() {
   const [otpInput, setOtpInput] = useState("");
   const navigate = useNavigate();
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     const storedOTP = localStorage.getItem("otp");
-
+    const phoneNumber = localStorage.getItem("phoneNumber");
+  
     if (otpInput === storedOTP) {
-      navigate("/location");
+      const user = await getUserByPhoneNumber(phoneNumber);
+  
+      if (user) {
+        localStorage.setItem("user", JSON.stringify(user));
+        navigate("/location");
+      } else {
+        // If user doesn't exist, create new one with just phone number
+        const newUser = await createUserWithPhone(phoneNumber);
+        if (newUser) {
+          localStorage.setItem("user", JSON.stringify(newUser));
+          navigate("/location");
+        } else {
+          toast.error("Unable to create new user. Please try again.");
+        }
+      }
+      
     } else {
       toast.error("Incorrect OTP. Please try again.");
     }
   };
+  
 
   const handleResend = () => {
     const newOTP = Math.floor(1000 + Math.random() * 9000);
