@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useCart } from "../context/CartContext";
 import { supabase } from "../supabase.js";
 import { fetchGroupedProductsFromBackend } from "../utils/productService";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 const brandIcons = {
   blinkit: `${import.meta.env.BASE_URL}logos/blinkit.png`,
@@ -20,11 +21,10 @@ export default function Home() {
   const [showAllGroceries, setShowAllGroceries] = useState(false);
   const [allProducts, setAllProducts] = useState([]);
   const [selectedPlatforms, setSelectedPlatforms] = useState([]);
+  const [orderHistory, setOrderHistory] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { addToCart, cartItems, updateQuantity } = useCart();
   const navigate = useNavigate();
-  const [banners, setBanners] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [commonItems, setCommonItems] = useState([]);
 
   useEffect(() => {
     const savedAddress = localStorage.getItem("selectedAddress");
@@ -32,80 +32,125 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    fetchData();
+    async function fetchUserOrderHistory() {
+      try {
+        const storedUser = localStorage.getItem("user");
+        const userData = storedUser ? JSON.parse(storedUser) : null;
+        
+        if (!userData?.userid) {
+          console.log("User information not available for order history");
+          return [];
+        }
+        
+        const { data, error } = await supabase
+          .from('orderhistory')
+          .select('productid, quantity')
+          .eq('userid', userData.userid);
+          
+        if (error) {
+          console.error("Error fetching order history:", error);
+          return [];
+        }
+        
+        const productCounts = data.reduce((acc, order) => {
+          if (!acc[order.productid]) {
+            acc[order.productid] = {
+              count: 0,
+              totalQuantity: 0
+            };
+          }
+          acc[order.productid].count += 1;
+          acc[order.productid].totalQuantity += order.quantity;
+          return acc;
+        }, {});
+        
+        setOrderHistory(productCounts);
+        return productCounts;
+      } catch (error) {
+        console.error("Error fetching user order history:", error);
+        return [];
+      }
+    }
+
+    async function fetchProducts() {
+      try {
+        setIsLoading(true);
+        const stored = localStorage.getItem("allProducts");
+        let productData = [];
+        
+        if (stored) {
+          productData = JSON.parse(stored);
+          setAllProducts(productData);
+        } else {
+          const { data: rawProducts, error: productError } = await supabase.rpc("get_products_with_prices");
+          if (productError) throw productError;
+
+          const { data: platforms, error: platformError } = await supabase.from("platform").select("*");
+          if (platformError) throw platformError;
+
+          const platformMap = {};
+          platforms.forEach((p) => {
+            platformMap[p.platformid] = p.name;
+          });
+
+          productData = rawProducts
+            .map((row) => {
+              const product = row.product;
+              const validPrices = (product.prices || []).filter((p) => p.platformid !== null);
+              if (validPrices.length === 0) return null;
+
+              return {
+                productid: product.productid,
+                name: product.name,
+                category: product.category,
+                quantityText: "1 unit",
+                image: `https://placehold.co/100x100?text=${encodeURIComponent(product.name)}`,
+                prices: validPrices.map((p) => ({
+                  platform: platformMap[p.platformid] || `Platform ${p.platformid}`,
+                  price: p.discountedprice,
+                  oldPrice: p.baseprice,
+                  time: `⏱ ${Math.floor(Math.random() * 11) + 10} Mins`,
+                  platformId: p.platformid
+                })),
+              };
+            })
+            .filter(Boolean);
+
+          setAllProducts(productData);
+          localStorage.setItem("allProducts", JSON.stringify(productData));
+        }
+
+        const productCounts = await fetchUserOrderHistory();
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error loading products and platforms:", error);
+        setIsLoading(false);
+      }
+    }
+
+    fetchProducts();
   }, []);
 
-  const fetchData = async () => {
-    try {
-      const storedUser = localStorage.getItem("user");
-      const userData = storedUser ? JSON.parse(storedUser) : null;
-
-      const { data: bannersData } = await supabase.from("banners").select("*");
-      const { data: categoriesData } = await supabase.from("categories").select("*");
-      const { data: rawProducts, error: productError } = await supabase.rpc("get_products_with_prices");
-      if (productError) throw productError;
-
-      const { data: platforms, error: platformError } = await supabase.from("platform").select("*");
-      if (platformError) throw platformError;
-
-      const platformMap = {};
-      platforms.forEach((p) => {
-        platformMap[p.platformid] = p.name;
-      });
-
-      const mapped = rawProducts
-        .map((row) => {
-          const product = row.product;
-          const validPrices = (product.prices || []).filter((p) => p.platformid !== null);
-          if (validPrices.length === 0) return null;
-
-          return {
-            productid: product.productid,
-            name: product.name,
-            category: product.category,
-            quantityText: "1 unit",
-            image: `https://placehold.co/100x100?text=${encodeURIComponent(product.name)}`,
-            prices: validPrices.map((p) => ({
-              platform: platformMap[p.platformid] || `Platform ${p.platformid}`,
-              price: p.discountedprice,
-              oldPrice: p.baseprice,
-              time: `⏱ ${Math.floor(Math.random() * 11) + 10} Mins`,
-              platformId: p.platformid
-            })),
-          };
-        })
-        .filter(Boolean);
-
-      setAllProducts(mapped);
-      localStorage.setItem("allProducts", JSON.stringify(mapped));
-
-      if (bannersData) setBanners(bannersData);
-      if (categoriesData) setCategories(categoriesData);
-
-      if (userData?.userid) {
-        try {
-          const { data: orderHistory, error } = await supabase
-            .from('orderhistory')
-            .select('productid')
-            .eq('userid', userData.userid);
-
-          if (error) {
-            console.error("Error fetching order history:", error);
-          } else if (orderHistory && orderHistory.length > 0) {
-            const orderedProductIds = [...new Set(orderHistory.map(order => order.productid))];
-            const filteredProducts = mapped.filter(product =>
-              orderedProductIds.includes(product.productid)
-            );
-            setCommonItems(filteredProducts);
+  const commonItems = useMemo(() => {
+    if (Object.keys(orderHistory).length > 0) {
+      return allProducts
+        .filter(product => orderHistory[product.productid])
+        .sort((a, b) => {
+          const aCount = orderHistory[a.productid]?.count || 0;
+          const bCount = orderHistory[b.productid]?.count || 0;
+          
+          if (aCount === bCount) {
+            return (orderHistory[b.productid]?.totalQuantity || 0) - (orderHistory[a.productid]?.totalQuantity || 0);
           }
-        } catch (orderError) {
-          console.error("Error processing order history:", orderError);
-        }
-      }
-    } catch (error) {
-      console.error("Error loading products and platforms:", error);
-    }
-  };
+          
+          return bCount - aCount;
+        })
+        .slice(0, 10);
+    } 
+    
+    return allProducts.slice(0, 10);
+  }, [allProducts, orderHistory]);
 
   const commonCategories = new Set(commonItems.map((p) => p.category));
   const grocerySpecific = allProducts.filter(
@@ -122,7 +167,7 @@ export default function Home() {
       commonCategories.has(p.category)
   );
 
-  const purchaseAgainAll = [...commonItems, ...purchaseSpecific];
+  const purchaseAgainAll = [...commonItems];
   const groceryAll = [...grocerySpecific];
 
   const filteredPurchase = purchaseAgainAll.filter((product) =>
@@ -291,9 +336,22 @@ export default function Home() {
             {showAllPurchase ? "Show less" : "See all"}
           </button>
         </div>
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          {purchaseAgainProducts.map(renderCard)}
-        </div>
+        
+        {Object.keys(orderHistory).length === 0 ? (
+          <div className="bg-white rounded-xl p-6 shadow-sm mb-4 text-center">
+            <p className="text-gray-500 mb-2">You haven't ordered anything yet</p>
+            <button 
+              onClick={() => navigate("/explore")}
+              className="text-green-600 font-medium"
+            >
+              Start Ordering
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            {purchaseAgainProducts.map(renderCard)}
+          </div>
+        )}
 
         <div className="flex justify-between items-center mb-2">
           <h3 className="text-md font-semibold">Gourmet & World Food</h3>
