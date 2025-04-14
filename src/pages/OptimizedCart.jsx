@@ -7,7 +7,7 @@ import platformLogos from "../utils/platformLogos";
 import { supabase } from "../supabase.js";
 
 export default function OptimizedCart() {
-  const { cartItems } = useCart();
+  const { cartItems, clearCart } = useCart();
   const [platformCarts, setPlatformCarts] = useState([]);
   const [expanded, setExpanded] = useState({});
   const [hybridCart, setHybridCart] = useState(null);
@@ -193,6 +193,7 @@ export default function OptimizedCart() {
         
         if (success) {
           console.log("Successfully added all items to order history");
+          clearCart();
           // Mark this cart as clicked to prevent duplicate entries
           setClickedCarts(prev => ({
             ...prev,
