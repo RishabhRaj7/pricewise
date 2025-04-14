@@ -50,6 +50,9 @@ export default function Account() {
 
   const handleLogout = () => {
     console.log("User logged out");
+    localStorage.removeItem("cart");
+    localStorage.clear();
+    clearCart();
     navigate("/login");
   };
 

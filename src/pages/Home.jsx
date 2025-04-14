@@ -22,6 +22,9 @@ export default function Home() {
   const [selectedPlatforms, setSelectedPlatforms] = useState([]);
   const { addToCart, cartItems, updateQuantity } = useCart();
   const navigate = useNavigate();
+  const [banners, setBanners] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [commonItems, setCommonItems] = useState([]);
 
   useEffect(() => {
     const savedAddress = localStorage.getItem("selectedAddress");
@@ -29,59 +32,81 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    async function fetchProducts() {
-      try {
-        const stored = localStorage.getItem("allProducts");
-        if (stored) {
-          setAllProducts(JSON.parse(stored));
-          return;
-        }
-
-        const { data: rawProducts, error: productError } = await supabase.rpc("get_products_with_prices");
-        if (productError) throw productError;
-
-        const { data: platforms, error: platformError } = await supabase.from("platform").select("*");
-        if (platformError) throw platformError;
-
-        const platformMap = {};
-        platforms.forEach((p) => {
-          platformMap[p.platformid] = p.name;
-        });
-
-        const mapped = rawProducts
-          .map((row) => {
-            const product = row.product;
-            const validPrices = (product.prices || []).filter((p) => p.platformid !== null);
-            if (validPrices.length === 0) return null;
-
-            return {
-              productid: product.productid, // Store as productid instead of id
-              name: product.name,
-              category: product.category,
-              quantityText: "1 unit",
-              image: `https://placehold.co/100x100?text=${encodeURIComponent(product.name)}`,
-              prices: validPrices.map((p) => ({
-                platform: platformMap[p.platformid] || `Platform ${p.platformid}`,
-                price: p.discountedprice,
-                oldPrice: p.baseprice,
-                time: `⏱ ${Math.floor(Math.random() * 11) + 10} Mins`,
-                platformId: p.platformid // Store the platform ID
-              })),
-            };
-          })
-          .filter(Boolean);
-
-        setAllProducts(mapped);
-        localStorage.setItem("allProducts", JSON.stringify(mapped));
-      } catch (error) {
-        console.error("Error loading products and platforms:", error);
-      }
-    }
-
-    fetchProducts();
+    fetchData();
   }, []);
 
-  const commonItems = allProducts.slice(0, 10);
+  const fetchData = async () => {
+    try {
+      const storedUser = localStorage.getItem("user");
+      const userData = storedUser ? JSON.parse(storedUser) : null;
+
+      const { data: bannersData } = await supabase.from("banners").select("*");
+      const { data: categoriesData } = await supabase.from("categories").select("*");
+      const { data: rawProducts, error: productError } = await supabase.rpc("get_products_with_prices");
+      if (productError) throw productError;
+
+      const { data: platforms, error: platformError } = await supabase.from("platform").select("*");
+      if (platformError) throw platformError;
+
+      const platformMap = {};
+      platforms.forEach((p) => {
+        platformMap[p.platformid] = p.name;
+      });
+
+      const mapped = rawProducts
+        .map((row) => {
+          const product = row.product;
+          const validPrices = (product.prices || []).filter((p) => p.platformid !== null);
+          if (validPrices.length === 0) return null;
+
+          return {
+            productid: product.productid,
+            name: product.name,
+            category: product.category,
+            quantityText: "1 unit",
+            image: `https://placehold.co/100x100?text=${encodeURIComponent(product.name)}`,
+            prices: validPrices.map((p) => ({
+              platform: platformMap[p.platformid] || `Platform ${p.platformid}`,
+              price: p.discountedprice,
+              oldPrice: p.baseprice,
+              time: `⏱ ${Math.floor(Math.random() * 11) + 10} Mins`,
+              platformId: p.platformid
+            })),
+          };
+        })
+        .filter(Boolean);
+
+      setAllProducts(mapped);
+      localStorage.setItem("allProducts", JSON.stringify(mapped));
+
+      if (bannersData) setBanners(bannersData);
+      if (categoriesData) setCategories(categoriesData);
+
+      if (userData?.userid) {
+        try {
+          const { data: orderHistory, error } = await supabase
+            .from('orderhistory')
+            .select('productid')
+            .eq('userid', userData.userid);
+
+          if (error) {
+            console.error("Error fetching order history:", error);
+          } else if (orderHistory && orderHistory.length > 0) {
+            const orderedProductIds = [...new Set(orderHistory.map(order => order.productid))];
+            const filteredProducts = mapped.filter(product =>
+              orderedProductIds.includes(product.productid)
+            );
+            setCommonItems(filteredProducts);
+          }
+        } catch (orderError) {
+          console.error("Error processing order history:", orderError);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading products and platforms:", error);
+    }
+  };
+
   const commonCategories = new Set(commonItems.map((p) => p.category));
   const grocerySpecific = allProducts.filter(
     (p) => p.category?.trim().toLowerCase() === "gourmet & world food"
