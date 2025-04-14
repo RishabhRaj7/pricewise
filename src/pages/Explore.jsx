@@ -54,7 +54,7 @@ export default function Explore() {
 
         const productData = {
           id: product.id,
-          productid: product.id,
+          productid: product.productid,
           name: product.name,
           category: product.category,
           quantityText: "1 unit",
@@ -292,6 +292,7 @@ export default function Explore() {
         <button
           onClick={() =>
             addToCart({
+              productid: product.productid || product.id, // Add productid property
               name: product.name,
               image: product.image,
               quantityText: product.quantityText,

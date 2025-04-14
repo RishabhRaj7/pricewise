@@ -259,7 +259,7 @@ export default function OptimizedCart() {
 </div>
           <div className="flex justify-between">
             <span>Additional Savings Available</span>
-            <span className="text-gray-500">₹{cart.additionalSavings}</span>
+            <span className="text-gray-500">₹{cart.additionalSavings.toFixed(2)}</span>
           </div>
           <hr className="my-2" />
           <div className="flex justify-between font-semibold">

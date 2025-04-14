@@ -1,0 +1,98 @@
+// Sample product data
+export const allProducts = [
+  {
+    id: "1",
+    name: "Apple",
+    description: "Fresh red apples",
+    price: 1.99,
+    category: "Fruits",
+    image: "/images/apple.jpg",
+    quantity: 1,
+  },
+  {
+    id: "2",
+    name: "Milk",
+    description: "Whole milk, 1 liter",
+    price: 2.49,
+    category: "Dairy",
+    image: "/images/milk.jpg",
+    quantity: 1,
+  },
+  {
+    id: "3",
+    name: "Bread",
+    description: "Whole grain bread",
+    price: 3.29,
+    category: "Bakery",
+    image: "/images/bread.jpg",
+    quantity: 1,
+  },
+  {
+    id: "4",
+    name: "Eggs",
+    description: "Free-range eggs, dozen",
+    price: 4.99,
+    category: "Dairy",
+    image: "/images/eggs.jpg",
+    quantity: 1,
+  },
+  {
+    id: "5",
+    name: "Banana",
+    description: "Fresh yellow bananas",
+    price: 0.99,
+    category: "Fruits",
+    image: "/images/banana.jpg",
+    quantity: 1,
+  },
+  {
+    id: "6",
+    name: "Chicken Breast",
+    description: "Boneless chicken breast, 500g",
+    price: 7.99,
+    category: "Meat",
+    image: "/images/chicken.jpg",
+    quantity: 1,
+  },
+  {
+    id: "7",
+    name: "Rice",
+    description: "Basmati rice, 1kg",
+    price: 5.49,
+    category: "Grains",
+    image: "/images/rice.jpg",
+    quantity: 1,
+  },
+  {
+    id: "8",
+    name: "Tomatoes",
+    description: "Fresh tomatoes, 500g",
+    price: 2.99,
+    category: "Vegetables",
+    image: "/images/tomatoes.jpg",
+    quantity: 1,
+  },
+  {
+    id: "9",
+    name: "Orange Juice",
+    description: "Fresh orange juice, 1 liter",
+    price: 3.49,
+    category: "Beverages",
+    image: "/images/orange-juice.jpg",
+    quantity: 1,
+  },
+  {
+    id: "10",
+    name: "Yogurt",
+    description: "Plain yogurt, 500g",
+    price: 2.29,
+    category: "Dairy",
+    image: "/images/yogurt.jpg",
+    quantity: 1,
+  },
+];
+
+// Export individual product getter function
+export const getProductById = (id) => {
+  return allProducts.find((product) => product.id === id) || null;
+};
