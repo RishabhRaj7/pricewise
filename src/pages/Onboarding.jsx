@@ -3,6 +3,7 @@ import MinimalLayout from "../layouts/MinimalLayout";
 
 export default function Onboarding() {
   const navigate = useNavigate();
+  localStorage.clear();
 
   return (
     <MinimalLayout>

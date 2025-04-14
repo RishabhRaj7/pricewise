@@ -4,6 +4,7 @@ import { buildPlatformCarts } from "../utils/optimizeCart";
 import { buildBestHybridCart } from "../utils/optimizeHybridCart";
 import HybridOptimizedCart from "../components/HybridOptimizedCart";
 import platformLogos from "../utils/platformLogos";
+import { supabase } from "../supabase.js";
 
 export default function OptimizedCart() {
   const { cartItems } = useCart();
@@ -11,8 +12,21 @@ export default function OptimizedCart() {
   const [expanded, setExpanded] = useState({});
   const [hybridCart, setHybridCart] = useState(null);
   const [showHybrid, setShowHybrid] = useState(false);
+  const [clickedCarts, setClickedCarts] = useState({});
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
+    // Get user from localStorage
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (error) {
+        console.error("Error parsing user from localStorage:", error);
+      }
+    }
+    
+    // Build carts
     const singlePlatformResults = buildPlatformCarts(cartItems);
     // Sort: complete carts first, then by estimated total
     singlePlatformResults.sort((a, b) => {
@@ -37,6 +51,88 @@ export default function OptimizedCart() {
     }));
   };
 
+  const addToOrderHistory = async (userId, cart, platformKey) => {
+    try {
+      if (!userId) {
+        console.log("No user ID found, skipping order history update");
+        return false;
+      }
+      
+      // First, get the highest orderid from the entire table
+      const { data: maxOrderData, error: maxOrderError } = await supabase
+        .from('orderhistory')
+        .select('orderid')
+        .order('orderid', { ascending: false })
+        .limit(1);
+      
+      if (maxOrderError) {
+        console.error("Error fetching max orderid:", maxOrderError);
+        return false;
+      }
+      
+      // Determine the next orderid (global highest + 1)
+      let nextOrderId = 1; // Default to 1 if no existing orders
+      if (maxOrderData && maxOrderData.length > 0) {
+        nextOrderId = maxOrderData[0].orderid + 1;
+      }
+      
+      console.log("Next order ID:", nextOrderId);
+      
+      const now = new Date().toISOString();
+      const platformVariantId = parseInt(platformKey.replace(/\D/g, '')) || 1;
+      
+      // Process each item in the cart with individual API calls
+      let allSuccessful = true;
+      
+      // Debug the cart items to see if they have productid
+      console.log("Cart items to process:", cart.items);
+      
+      for (const item of cart.items) {
+        // Find the original cart item with its ID
+        const originalCartItem = cartItems.find(cartItem => cartItem.name === item.name);
+        console.log("Original cart item:", originalCartItem);
+        
+        // Use the ID from the original cart item or default to 1
+        const productId = originalCartItem?.productid || item.productid || 1;
+        
+        console.log(`Product ID for ${item.name}:`, productId);
+        
+        const orderEntry = {
+          orderid: nextOrderId,
+          userid: userId,
+          productid: productId,
+          quantity: item.quantity,
+          totalprice: item.price * item.quantity,
+          orderdate: now,
+          deliverystatus: "Delivered",
+          created_at: now,
+          updated_at: now,
+          variantid: platformVariantId
+        };
+        
+        console.log(`Sending to Supabase for product ${item.name}:`, orderEntry);
+        
+        // Individual API call for each product
+        const { data, error } = await supabase
+          .from('orderhistory')
+          .insert([orderEntry]);
+          
+        if (error) {
+          console.error(`Error adding product ${item.name} to order history:`, error);
+          allSuccessful = false;
+        } else {
+          console.log(`Successfully added product ${item.name} to order history:`, data);
+        }
+      }
+      
+      return allSuccessful;
+      
+    } catch (error) {
+      console.error("Error in addToOrderHistory:", error);
+      return false;
+    }
+  };
+
   const renderCartCard = (cart, index) => {
     const platformKey = cart.platform.toLowerCase().replace(/\s+/g, "");
     const isBest = cart.isComplete && cart.estimatedTotal === platformCarts[0]?.estimatedTotal;
@@ -52,12 +148,71 @@ export default function OptimizedCart() {
 
     const gradient = gradientMap[platformKey] || "from-gray-100 to-gray-50";
 
+    const handleCardClick = async (e) => {
+      // Stop propagation for inner button clicks (like "Show Items")
+      if (e.target.closest('button:not(.cart-card)')) {
+        console.log("Inner button clicked, not processing cart click");
+        return;
+      }
+      
+      console.log(`${cart.platform} cart clicked!`);
+      
+      // Skip if already clicked
+      if (clickedCarts[platformKey]) {
+        console.log("Cart already clicked, skipping");
+        return;
+      }
+      
+      try {
+        // Get user from localStorage if not in state
+        let currentUser = user;
+        if (!currentUser) {
+          const storedUser = localStorage.getItem("user");
+          if (storedUser) {
+            try {
+              currentUser = JSON.parse(storedUser);
+              setUser(currentUser);
+              console.log("Retrieved user from localStorage:", currentUser);
+            } catch (error) {
+              console.error("Error parsing user from localStorage:", error);
+              return;
+            }
+          } else {
+            console.error("No user found in localStorage");
+            return;
+          }
+        }
+        
+        if (!currentUser?.userid) {
+          console.error("User object doesn't contain userid:", currentUser);
+          return;
+        }
+        
+        // Call the function to add to order history
+        const success = await addToOrderHistory(currentUser.userid, cart, platformKey);
+        
+        if (success) {
+          console.log("Successfully added all items to order history");
+          // Mark this cart as clicked to prevent duplicate entries
+          setClickedCarts(prev => ({
+            ...prev,
+            [platformKey]: true
+          }));
+        } else {
+          console.error("Failed to add items to order history");
+        }
+      } catch (error) {
+        console.error("Error in handleCardClick:", error);
+      }
+    };
+
     return (
-      <div
+      <button
         key={index}
-        className={`relative p-4 mb-4 border rounded-xl bg-gradient-to-br ${gradient} ${
+        onClick={handleCardClick}
+        className={`cart-card relative p-4 mb-4 border rounded-xl bg-gradient-to-br ${gradient} ${
           isBest ? "border-green-500" : "border-gray-200"
-        }`}
+        } w-full text-left cursor-pointer`}
       >
         {isBest && (
           <div className="absolute -top-3 -left-3 bg-green-500 text-white text-xs px-2 py-1 rounded-full shadow">
@@ -143,13 +298,15 @@ export default function OptimizedCart() {
             </div>
           )}
         </div>
-      </div>
+      </button>
     );
   };
 
   return (
     <div className="max-w-[420px] mx-auto p-4 pb-24 bg-[#fbfbfb] min-h-screen">
-      <h2 className="text-lg font-semibold mb-4 text-center">My Cart</h2>
+      <div className="sticky top-0 bg-[#fbfbfb] z-10 p-4 shadow-sm -mx-4 mb-4">
+        <h2 className="text-lg font-semibold text-center">My Cart</h2>
+      </div>
 
       {hybridCart && (
         <div className="mb-4">

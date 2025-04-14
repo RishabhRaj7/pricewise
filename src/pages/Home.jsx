@@ -55,6 +55,7 @@ export default function Home() {
             if (validPrices.length === 0) return null;
 
             return {
+              productid: product.productid, // Store as productid instead of id
               name: product.name,
               category: product.category,
               quantityText: "1 unit",
@@ -64,6 +65,7 @@ export default function Home() {
                 price: p.discountedprice,
                 oldPrice: p.baseprice,
                 time: `⏱ ${Math.floor(Math.random() * 11) + 10} Mins`,
+                platformId: p.platformid // Store the platform ID
               })),
             };
           })
@@ -125,6 +127,7 @@ export default function Home() {
       <button
         onClick={() =>
           addToCart({
+            productid: product.productid,
             name: product.name,
             image: product.image,
             quantityText: product.quantityText,

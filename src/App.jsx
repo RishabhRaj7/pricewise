@@ -12,14 +12,12 @@ import { CartProvider, useCart } from "./context/CartContext";
 import Account from './pages/Account';
 import Explore from "./pages/Explore";
 import OptimizedCart from "./pages/OptimizedCart";
-
-// Placeholder routes
-const Favourites = () => <div className='p-6'>Favourites Page</div>;
+import Favourites from "./pages/Favourites";
 
 function DebugCart() {
   const { cartItems } = useCart();
   console.log("Cart items (from DebugCart):", cartItems);
-  return null;
+  return null;  
 }
 
 export default function App() {
