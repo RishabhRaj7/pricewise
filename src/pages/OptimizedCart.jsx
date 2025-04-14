@@ -5,6 +5,7 @@ import { buildBestHybridCart } from "../utils/optimizeHybridCart";
 import HybridOptimizedCart from "../components/HybridOptimizedCart";
 import platformLogos from "../utils/platformLogos";
 import { supabase } from "../supabase.js";
+import { toast } from "react-toastify";
 
 export default function OptimizedCart() {
   const { cartItems, clearCart } = useCart();
@@ -193,6 +194,7 @@ export default function OptimizedCart() {
         
         if (success) {
           console.log("Successfully added all items to order history");
+          toast.info(`Successfully added all items to order list`);
           clearCart();
           // Mark this cart as clicked to prevent duplicate entries
           setClickedCarts(prev => ({

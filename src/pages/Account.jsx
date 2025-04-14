@@ -153,12 +153,11 @@ const verifyOtp = async () => {
         
         acc[order.orderid].items.push(order);
         acc[order.orderid].totalAmount += Number(order.totalprice);
-        
         return acc;
       }, {});
-      
       // Convert to array for rendering
-      const ordersArray = Object.values(groupedOrders);
+      const ordersArray = Object.values(groupedOrders).sort((a, b) => b.orderid - a.orderid);
+      
       setOrderHistory(ordersArray);
       setShowOrderHistory(true);
       setIsLoadingOrders(false);
