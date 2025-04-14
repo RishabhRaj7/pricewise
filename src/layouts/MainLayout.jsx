@@ -2,6 +2,7 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
 import { useCart } from "../context/CartContext";
 import { allProducts } from "../data/products";
+import { createWorker } from 'tesseract.js';
 
 export default function MainLayout() {
   const navigate = useNavigate();
@@ -68,34 +69,64 @@ export default function MainLayout() {
     setNotFoundItems([]);
 
     try {
-      // Create FormData for the API call
-      const formData = new FormData();
-      formData.append('image', file);
-
-      // For demonstration, we'll simulate an API response with mock data
-      setTimeout(() => {
-        try {
-          // Updated mock recognized items
-          const mockRecognizedItems = ['Face Wash', 'Milk', 'Granola', 'Eau De Toilette', 'Chips', 'Eggs'];
-          setRecognizedItems(mockRecognizedItems);
-          
-          // Match recognized items with products in localStorage
-          const matchedProducts = findMatchingProducts(mockRecognizedItems);
-          console.log('Matched products:', matchedProducts); 
-          
-          // Use our helper function to add products to cart
-          addProductsToCart(matchedProducts);
-          
-          // Set loading to false
-          setIsLoading(false);
-        } catch (error) {
-          console.error('Error processing recognition results:', error);
-          setIsLoading(false);
-        }
-      }, 2000);
+      // Create a URL for the image file
+      const imageUrl = URL.createObjectURL(file);
+      
+      console.log("Processing image with Tesseract...");
+      
+      // Initialize Tesseract worker with English language
+      const worker = await createWorker('eng');
+      
+      // Perform OCR on the image
+      const { data } = await worker.recognize(imageUrl);
+      
+      // Terminate the worker when done
+      await worker.terminate();
+      
+      // Process the OCR results
+      const extractedText = data.text;
+      console.log("Extracted text from image:", extractedText);
+      
+      // Split text into lines and filter empty lines
+      let items = extractedText.split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+      
+      // Further process the items (remove very short items, duplicates, etc.)
+      items = items
+        .filter(item => item.length > 2) // Remove very short items
+        .filter(item => !/^\d+(\.\d+)?$/.test(item)) // Remove numbers-only items
+        .map(item => {
+          // Clean up common OCR artifacts
+          return item
+            .replace(/[^\w\s]/g, '') // Remove special characters
+            .trim();
+        })
+        .filter((item, index, self) => 
+          self.indexOf(item) === index && item.length > 0
+        ); // Remove duplicates and empty items
+      
+      console.log("Processed items:", items);
+      
+      if (items.length === 0) {
+        throw new Error("No text could be extracted from the image");
+      }
+      
+      setRecognizedItems(items);
+      
+      // Match recognized items with products in localStorage
+      const matchedProducts = findMatchingProducts(items);
+      console.log('Matched products:', matchedProducts); 
+      
+      // Use our helper function to add products to cart
+      addProductsToCart(matchedProducts);
+      
+      // Set loading to false
+      setIsLoading(false);
     } catch (error) {
       console.error('Error processing image:', error);
       setIsLoading(false);
+      alert(error.message || 'Error processing image. Please try again with a clearer image.');
     }
   };
 

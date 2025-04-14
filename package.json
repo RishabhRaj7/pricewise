@@ -19,7 +19,8 @@
     "react-router-dom": "^6.22.0",
     "react-toastify": "^9.1.3",
     "recharts": "^2.15.2",
-    "supabase": "^2.20.12"
+    "supabase": "^2.20.12",
+    "tesseract.js": "^6.0.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.4",

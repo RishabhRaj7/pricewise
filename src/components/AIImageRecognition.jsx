@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { allProducts } from '../data/products';
+import { createWorker } from 'tesseract.js';
 
 const AIImageRecognition = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -21,62 +22,149 @@ const AIImageRecognition = () => {
     if (!file) return;
 
     setIsLoading(true);
+    setRecognizedItems([]); // Clear previous results
 
     try {
-      // Create FormData for the API call
-      const formData = new FormData();
-      formData.append('image', file);
-
-      // This is a placeholder for the actual API call
-      // Replace with your actual AI image recognition API
-      // const response = await fetch('your-ai-image-recognition-api-endpoint', {
-      //   method: 'POST',
-      //   body: formData,
-      // });
-      // const data = await response.json();
+      // Create a URL for the image file
+      const imageUrl = URL.createObjectURL(file);
       
-      // For demonstration, we'll simulate an API response with mock data
-      setTimeout(() => {
-        // Simulate recognized items (replace with actual AI results)
-        const mockRecognizedItems = ['Face Wash', 'Milk', 'Granola', 'Eau De Toilette', 'Chips'];
-        setRecognizedItems(mockRecognizedItems);
-        
-        // Match recognized items with products in your store
-        const matchedProducts = findMatchingProducts(mockRecognizedItems);
-        
-        // Add matched products to cart
+      console.log("Processing image with Tesseract...");
+      
+      // Initialize Tesseract worker with English language
+      const worker = await createWorker('eng');
+      
+      // Perform OCR on the image
+      const { data } = await worker.recognize(imageUrl);
+      
+      // Terminate the worker when done
+      await worker.terminate();
+      
+      // Process the OCR results
+      const extractedText = data.text;
+      console.log("Extracted text from image:", extractedText);
+      
+      // Split text into lines and filter empty lines
+      let items = extractedText.split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+      
+      // Further process the items (remove very short items, duplicates, etc.)
+      items = items
+        .filter(item => item.length > 2) // Remove very short items
+        .filter(item => !/^\d+(\.\d+)?$/.test(item)) // Remove numbers-only items
+        .map(item => {
+          // Clean up common OCR artifacts
+          return item
+            .replace(/[^\w\s]/g, '') // Remove special characters
+            .trim();
+        })
+        .filter((item, index, self) => 
+          self.indexOf(item) === index && item.length > 0
+        ); // Remove duplicates and empty items
+      
+      console.log("Processed items:", items);
+      
+      if (items.length === 0) {
+        throw new Error("No text could be extracted from the image");
+      }
+      
+      setRecognizedItems(items);
+      
+      // Match recognized items with products in your store
+      const matchedProducts = findMatchingProducts(items);
+      console.log("Matched products:", matchedProducts);
+      
+      // Add matched products to cart
+      if (matchedProducts.length > 0) {
         matchedProducts.forEach(product => {
           addToCart(product);
+          console.log("Added to cart:", product.name);
         });
         
-        setIsLoading(false);
-        
-        // Close the panel and navigate to cart
+        // Close the panel and navigate to cart after a short delay
         setTimeout(() => {
           setIsOpen(false);
           navigate('/cart');
         }, 2000);
-      }, 2000);
+      } else {
+        console.log("No matching products found");
+      }
+      
+      setIsLoading(false);
     } catch (error) {
       console.error('Error processing image:', error);
       setIsLoading(false);
+      alert(error.message || 'Error processing image. Please try again with a clearer image.');
     }
   };
 
   // Function to find matching products from the allProducts list
   const findMatchingProducts = (recognizedItems) => {
     const matchedProducts = [];
+    const processedProductIds = new Set(); // Prevent duplicate products
     
     recognizedItems.forEach(item => {
-      // Simple matching algorithm (can be improved with more sophisticated NLP techniques)
-      const matchedProduct = allProducts.find(product => {
+      if (!item) return;
+      
+      const itemLower = item.toLowerCase();
+      
+      // Score-based matching algorithm
+      const possibleMatches = allProducts.map(product => {
         const productName = product.name.toLowerCase();
-        return productName.includes(item.toLowerCase()) || 
-               item.toLowerCase().includes(productName);
+        const productCategory = (product.category || '').toLowerCase();
+        
+        // Calculate a matching score
+        let score = 0;
+        
+        // Exact match gets highest score
+        if (productName === itemLower) {
+          score += 100;
+        }
+        // Contains the full item name
+        else if (productName.includes(itemLower)) {
+          score += 75;
+        }
+        // Item contains the product name
+        else if (itemLower.includes(productName)) {
+          score += 60;
+        }
+        // Word-by-word matching
+        else {
+          const itemWords = itemLower.split(/\s+/)
+            .filter(word => word.length > 2);
+          const productWords = productName.split(/\s+/)
+            .filter(word => word.length > 2);
+          
+          for (const word of itemWords) {
+            if (productName.includes(word)) {
+              score += 15;
+            }
+          }
+          
+          for (const word of productWords) {
+            if (itemLower.includes(word)) {
+              score += 10;
+            }
+          }
+        }
+        
+        // Category matching
+        if (productCategory && (itemLower.includes(productCategory) || 
+            productCategory.includes(itemLower))) {
+          score += 25;
+        }
+        
+        return { product, score };
       });
       
-      if (matchedProduct) {
-        matchedProducts.push(matchedProduct);
+      // Get the best match (with a reasonable threshold)
+      const bestMatches = possibleMatches
+        .filter(match => match.score > 25) // Threshold for considering a match
+        .sort((a, b) => b.score - a.score);
+      
+      if (bestMatches.length > 0 && !processedProductIds.has(bestMatches[0].product.id)) {
+        matchedProducts.push(bestMatches[0].product);
+        processedProductIds.add(bestMatches[0].product.id);
       }
     });
     
