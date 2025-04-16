@@ -1,0 +1,192 @@
+//"User"
+[
+  {
+    "userid": 1,
+    "name": "Ananya Sharma",
+    "email": "ananya.sharma@gmail.com",
+    "password": "Password123!",
+    "phonenumber": "9876543210",
+    "subscriptionstatus": "Premium",
+    "locationid": 1,
+    "created_at": "2025-04-08 09:04:23.110904",
+    "updated_at": "2025-04-08 09:04:23.110904"
+  }
+]
+
+//Product
+
+[
+  {
+    "productid": 1,
+    "name": "Toned Milk",
+    "category": "Dairy",
+    "description": "Fresh toned milk with 3.5% fat content",
+    "created_at": "2025-04-08 09:04:23.110904",
+    "updated_at": "2025-04-08 09:04:23.110904"
+  }
+]
+
+//ProductVariant
+
+[
+  {
+    "variantid": 1,
+    "productid": 1,
+    "variantdetails": "500ml Tetra Pack",
+    "created_at": "2025-04-08 09:04:23.110904",
+    "updated_at": "2025-04-08 09:04:23.110904",
+    "brand": "Amul"
+  }
+]
+
+//pricehistory
+[
+  {
+    "historyid": 1,
+    "productid": 1,
+    "platformid": null,
+    "locationid": null,
+    "historicalprice": 30,
+    "wasavailable": true,
+    "daterecorded": "2023-09-15 10:00:00",
+    "created_at": "2025-04-08 09:04:23.110904",
+    "updated_at": "2025-04-08 09:04:23.110904",
+    "variantid": 1,
+    "darkstoreid": 1
+  }
+]
+
+//price
+[
+  {
+    "priceid": 1,
+    "productid": 1,
+    "platformid": null,
+    "locationid": null,
+    "baseprice": 32,
+    "discountedprice": 28.5,
+    "timestamp": "2023-10-15 10:00:00",
+    "created_at": "2025-04-08 09:04:23.110904",
+    "updated_at": "2025-04-08 09:04:23.110904",
+    "isavailable": true,
+    "darkstoreid": 1,
+    "variantid": 1
+  }
+]
+
+//platform
+[
+  {
+    "platformid": 1,
+    "name": "Blinkit",
+    "type": "Quick Commerce"
+  }
+]
+
+//orderhistory
+[
+  {
+    "orderhistoryid": 1,
+    "orderid": 1,
+    "userid": 1,
+    "productid": 1,
+    "quantity": 2,
+    "totalprice": 57,
+    "orderdate": "2023-10-10 15:30:00",
+    "deliverystatus": "Delivered",
+    "created_at": "2025-04-08 09:04:23.110904",
+    "updated_at": "2025-04-08 09:04:23.110904",
+    "variantid": 1
+  }
+]
+
+//notifications
+[
+  {
+    "notificationid": 1,
+    "userid": 1,
+    "productid": 5,
+    "thresholdprice": 100,
+    "notificationtype": "Price Drop",
+    "created_at": "2025-04-08 09:04:23.110904",
+    "updated_at": "2025-04-08 09:04:23.110904"
+  }
+]
+
+//location
+[
+  {
+    "locationid": 1,
+    "city": "Mumbai",
+    "state": "Maharashtra",
+    "postalcode": "400076",
+    "created_at": "2025-04-08 09:04:23.110904",
+    "updated_at": "2025-04-08 09:04:23.110904"
+  }
+]
+
+//feedback
+[
+  {
+    "feedbackid": 1,
+    "userid": 1,
+    "feedbacktext": "Great app! Saved me a lot of money on my grocery shopping.",
+    "rating": 4.5,
+    "created_at": "2025-04-08 09:04:23.110904",
+    "updated_at": "2025-04-08 09:04:23.110904"
+  }
+]
+
+//favourites
+
+
+//darkstore
+[
+  {
+    "darkstoreid": 1,
+    "platformid": 1,
+    "locationid": 1,
+    "deliveryfee": 20,
+    "estimateddeliverytime": 15,
+    "created_at": "2025-04-08 09:04:23.110904",
+    "updated_at": "2025-04-08 09:04:23.110904"
+  }
+]
+
+//cartoptimization
+[
+  {
+    "optimizationid": 1,
+    "cartid": 1,
+    "totalcost": 370.5,
+    "totaldeliverytime": 15,
+    "savingsamount": 45.25,
+    "taxamount": 18.52,
+    "handlingfee": 10,
+    "created_at": "2025-04-08 09:04:23.110904",
+    "updated_at": "2025-04-08 09:04:23.110904"
+  }
+]
+
+//cartitem
+[
+  {
+    "itemid": 1,
+    "cartid": 1,
+    "productid": 1,
+    "quantity": 2,
+    "created_at": "2025-04-08 09:04:23.110904",
+    "updated_at": "2025-04-08 09:04:23.110904"
+  }
+]
+
+//cart
+[
+  {
+    "cartid": 1,
+    "userid": 1,
+    "cartname": "Weekly Grocery",
+    "created_at": "2025-04-08 09:04:23.110904",
+    "updated_at": "2025-04-08 09:04:23.110904"
+  }
+]
